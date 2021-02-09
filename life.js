@@ -1,9 +1,6 @@
 // create matrix field
-const createMatrix = (x, y) =>
+const createRandomMatrix = (x, y) =>
 	Array.from({ length: x }, () => Array.from({ length: y }, () => Math.round(Math.random())));
-
-const matrix = createMatrix(5, 5);
-console.log(matrix);
 
 // find all neighbors
 const findNeighbors = (matrix, coordinates) => {
@@ -56,7 +53,7 @@ const changeMatrixState = matrix => {
 // compare 2 matrix
 const compare = (first, second) => first.every((value, index) => value === second[index]);
 
-const cycle = (matrix, delay, steps) => {
+const cycle = (matrix, steps) => {
 	const timer = setTimeout(() => {
 		const nextMatrix = changeMatrixState(matrix);
 		const isSame = compare(matrix.flat(), nextMatrix.flat());
@@ -66,9 +63,71 @@ const cycle = (matrix, delay, steps) => {
 			return;
 		}
 		console.log(nextMatrix);
-		if (steps > 1) cycle(nextMatrix, delay, steps - 1);
+		if (steps > 1) cycle(nextMatrix, steps - 1);
+		if (!steps) cycle(nextMatrix);
 		clearInterval(timer);
-	}, delay);
+	}, 1000);
 };
 
-cycle(matrix, 1000, 20);
+// ======  работа с node аргументами =====
+
+// transform txt file into 2d array
+function getArguments() {
+	if (process.argv.length < 3) return;
+
+	const tryPositiveInt = arg => (Number.isInteger(Number(arg)) ? Number(arg) : false);
+
+	const x = tryPositiveInt(process.argv[2]);
+	const y = x && process.argv[3] && tryPositiveInt(process.argv[3]);
+
+	return x ? { type: "numbers", body: y ? [x, y] : [x, x] } : { type: "file", body: readFile(process.argv[2]) };
+}
+
+// transform txt file into 2d array
+function readFile(file) {
+	const fs = require("fs");
+	try {
+		const output = fs.readFileSync(file, "utf8").split("\r\n");
+		// const result = JSON.stringify(output);
+		return output;
+	} catch (err) {
+		return undefined;
+	}
+}
+
+// get matrix from 2d array
+function getMatrixFromArray(arr) {
+	if (!Array.isArray(arr) || !Number.isInteger(Number(arr.reduce((a, b) => a + b)))) {
+		return undefined;
+	}
+
+	const maxLength = Math.max.apply(
+		null,
+		arr.map(x => x.length)
+	);
+
+	return arr.map(x => {
+		return x
+			.padEnd(maxLength, "0")
+			.split("")
+			.map(y => (Number(y) ? 1 : 0));
+	});
+}
+
+function createArgsMatrix(args) {
+	if (!args) return createRandomMatrix(5, 5);
+	const { type, body } = args;
+	switch (type) {
+		case "numbers":
+			return createRandomMatrix(body[0], body[1]);
+		case "file":
+			return getMatrixFromArray(body) ? getMatrixFromArray(body) : createRandomMatrix(5, 5);
+	}
+}
+
+const args = getArguments();
+const matrix = createArgsMatrix(args);
+
+console.log("start matrix: ", matrix);
+
+cycle(matrix);
